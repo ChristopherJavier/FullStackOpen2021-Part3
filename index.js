@@ -94,11 +94,12 @@ app.post('/api/persons', (request, response) => {
   const nameVef = persons.some(person => person.name === body.name)
 
   /* This is part of the 3.6: Phonebook backend step6 exercise */
-  if (!body.name) response.status(400).json({ error: "name missing" })
+  if (!body.name) return response.status(400).json({ error: "name missing" })
   
-  if (!body.number) response.status(400).json({error: "number missing"})
+  if (!body.number) return response.status(400).json({error: "number missing"})
 
-  if (nameVef) response.status(409).json({ error: "name must be unique" })
+
+  if (nameVef) return response.status(409).json({ error: "name must be unique" })
 
   const person = {
     id: personIdGenerator(),
