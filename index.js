@@ -4,6 +4,7 @@ const app = express()
 const morgan = require("morgan")
 const cors = require("cors")
 
+app.use(express.static("build"))
 app.use(express.json())
 app.use(cors())
 /* This is part of the 3.7: Phonebook backend step7 exercise*/

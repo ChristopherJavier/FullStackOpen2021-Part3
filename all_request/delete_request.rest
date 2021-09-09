@@ -1,1 +1,1 @@
-DELETE https://fso-part3-phonebook-app.herokuapp.com/api/persons/7113
+DELETE http://localhost:3001/api/persons/4
