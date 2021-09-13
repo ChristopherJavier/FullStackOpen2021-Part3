@@ -1,8 +1,10 @@
 /* This is part of the 3.1: Phonebook backend step1 exercise */
+require("dotenv").config()
 const express = require("express")
 const app = express()
 const morgan = require("morgan")
 const cors = require("cors")
+const Person = require("./models/persons")
 
 app.use(express.static("build"))
 app.use(express.json())
@@ -54,65 +56,103 @@ app.get("/", (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 /* This is part of the 3.2: Phonebook backend step2 exercise*/
 app.get('/info', (request, response) => {
-  const personsInfo = {
-    numberOfpersons: persons.length,
-    actualTime: new Date()
-  }
 
-  response.write(`<p> The phonebook has info of ${personsInfo.numberOfpersons} <p> <br/>`)
-  response.write(String(personsInfo.actualTime))
-  response.end()
+  Person.estimatedDocumentCount({})
+    .then((count) => {
+      response.send(`<p>Phonebook has info for ${count}</p></br><p>${new Date()}</p>`)
+    })
+    .catch(error => next(error))
 })
 
 /* This is part of the 3.3 Phonebook backend step3 exercise*/
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id)
+app.get('/api/persons/:id', (request, response, next) => {
+  const id = request.params.id
 
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
+  Person.findById(id)
+    .then(person => {
+      if (person) {
+        response.json(person)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))
 })
 
 /* This is part of the 3.4 Phonebook backend step4 exercise*/
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
+app.delete('/api/persons/:id', (request, response, next) => {
+  const id = request.params.id
+  Person.findByIdAndRemove(id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 
-  response.status(204).end()
 })
 
 /* This is part of the 3.5: Phonebook backend step5 exercise*/
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
-  const nameVef = persons.some(person => person.name === body.name)
+  /* const nameVef = persons.some(person => person.name === body.name) */
 
   /* This is part of the 3.6: Phonebook backend step6 exercise */
   if (!body.name) return response.status(400).json({ error: "name missing" })
-  
-  if (!body.number) return response.status(400).json({error: "number missing"})
 
+  if (!body.number) return response.status(400).json({ error: "number missing" })
 
-  if (nameVef) return response.status(409).json({ error: "name must be unique" })
+  /* if (nameVef) return response.status(400).json({ error: "name must be unique" }) */
 
-  const person = {
+  const person = new Person({
     id: personIdGenerator(),
     name: body.name,
     number: body.number
-  }
+  })
 
   persons = persons.concat(person)
 
-  response.json(person)
+  person.save()
+    .then(savedPerson => {
+      response.json(savedPerson)
+    })
+    .catch(error => next(error))
 
 })
+
+app.put("/api/persons/:id", (request, response, next) => {
+  const body = request.body
+  console.log(body.number)
+
+  const person = {
+    number: body.number
+  }
+
+  Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: "query" })
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
+})
+
+const errorHandler = (error, request, response, next) => {
+  console.log(error.message)
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" })
+  }else if (error.name === "ValidationError") {
+    return response.status(400).send({ error: error.message })
+  }
+
+  next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
